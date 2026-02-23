@@ -1,33 +1,56 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Configurar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: "npm"
+          node-version: 20
+          cache: npm
 
       - name: Instalar dependências
         run: npm ci
 
-      - name: Rodar ESLint
+      - name: Rodar lint
         run: npm run lint
 
       - name: Rodar testes
-        run: npm run test
+        run: npm run test -- --run
 
       - name: Rodar build
         run: npm run build
+
+      - name: Upload artefato
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy no GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/deploy-pages@v4
